@@ -1,6 +1,13 @@
-# Python
+# Python virtual env
 venv/
+
+# Python cache
 __pycache__/
 
 # Environment variables
 .env
+
+# ML / model artifacts
+*.safetensors
+faiss_assets/
+models/
