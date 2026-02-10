@@ -23,6 +23,20 @@ Canonical Job Role (Title + Code + Description)
 Agentic Interview Loop (LLM via Ollama)
 
 --------------------------------------------------------------------
+
+This repository does NOT include:
+
+- FAISS index files
+- Fine-tuned SBERT model weights
+- Large ML artifacts (`.safetensors`, `.bin`, `.pt`)
+- Python virtual environments
+
+These files are intentionally excluded due to size and
+machine-specific constraints.
+
+Without these assets, semantic job matching will not run.
+--------------------------------------------------------------------
+
 REQUIREMENTS
 
 System:
@@ -90,7 +104,7 @@ Place the following files inside faiss_assets/:
 - index_df_canonical.csv
 - sbert_nco_finetuned/
 
-These assets are generated from the NCO dataset preprocessing pipeline.
+These assets are generated from the NCO dataset preprocessing pipeline and are not included in this repository.
 --------------------------------------------------------------------
 6) Run the system
 ```bash
