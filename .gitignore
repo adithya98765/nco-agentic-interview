@@ -1,13 +1,54 @@
-# Python virtual env
-venv/
-
-# Python cache
+# =========================
+# Python
+# =========================
 __pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
 
-# Environment variables
+# Virtual environments
+venv/
 .env
+.env.*
 
-# ML / model artifacts
+# =========================
+# ML / AI Artifacts
+# =========================
+# Model weights
 *.safetensors
+*.pt
+*.pth
+*.ckpt
+*.bin
+
+# FAISS and embedding assets
 faiss_assets/
-models/
+*.index
+
+# SentenceTransformer cache
+.cache/
+sentence_transformers/
+
+# =========================
+# Jupyter / Experiments
+# =========================
+.ipynb_checkpoints/
+notebooks/
+
+# =========================
+# OS / Editor junk
+# =========================
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# =========================
+# Logs / Temp
+# =========================
+*.log
+*.tmp
+
