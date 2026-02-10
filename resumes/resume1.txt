@@ -1,0 +1,15 @@
+Name: Arjun Mehta
+Role: Software Developer
+
+Skills:
+- Python
+- Data Structures
+- FAISS
+- SQL
+
+Projects:
+- Built a semantic job matching system using FAISS
+
+Education:
+B.Tech in Computer Science
+
