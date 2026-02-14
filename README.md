@@ -57,7 +57,7 @@ SETUP INSTRUCTIONS
 1) Clone and Setup Environment
    
 ```bash
-git clone https://github.com/your-username/nco-agentic-interview.git
+git clone https://github.com/adithya98765/nco-agentic-interview.git
 cd nco-agentic-interview
 python3.9 -m venv venv
 source venv/bin/activate
