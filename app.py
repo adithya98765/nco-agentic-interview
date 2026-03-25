@@ -3,7 +3,6 @@ import json
 import sys
 import os
 
-# Add proper error handling for imports
 try:
     from resume_parser import extract_skills
     from faiss_search import NCOSemanticSearch
@@ -12,7 +11,6 @@ except ImportError as e:
     st.error(f"Import Error: {str(e)} - Please install missing dependencies.")
     st.stop()
 
-# Page configuration
 st.set_page_config(
     page_title="NCO Interview Agent",
     page_icon="🎤",
@@ -20,7 +18,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
 st.markdown("""
     <style>
     .stChatMessage {
@@ -47,7 +44,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Initialize session state
+# SESSION STATE
 if "interview_initialized" not in st.session_state:
     st.session_state.interview_initialized = False
     st.session_state.agent = None
@@ -59,25 +56,20 @@ if "interview_initialized" not in st.session_state:
 
 
 def initialize_interview():
-    """Initialize the interview with resume and job matching."""
     try:
-        # Load resume
         with open("resumes/resume1.txt") as f:
             resume_text = f.read()
         resume_skills = extract_skills(resume_text)
-        
-        # Semantic job search
+
         searcher = NCOSemanticSearch()
         job_matches = searcher.search("software engineer", k=1)
         top_job = job_matches[0]
-        
-        # Initialize agent
+
         agent = InterviewAgent(
             job_info=top_job,
             resume_skills=resume_skills
         )
-        
-        # Store in session state
+
         st.session_state.agent = agent
         st.session_state.job_info = top_job
         st.session_state.resume_skills = resume_skills
@@ -85,7 +77,7 @@ def initialize_interview():
         st.session_state.messages = []
         st.session_state.interview_complete = False
         st.session_state.asked_skills = []
-        
+
         return True
     except Exception as e:
         st.error(f"Error initializing interview: {str(e)}")
@@ -93,89 +85,94 @@ def initialize_interview():
 
 
 def get_next_question():
-    """Get the next question from the agent."""
     if st.session_state.agent is None:
         return None
-    
     try:
-        decision = st.session_state.agent.decide_next()
-        return decision
+        return st.session_state.agent.decide_next()
     except Exception as e:
         st.error(f"Error getting next question: {str(e)}")
         return None
 
 
 def start_interview():
-    """Start a new interview by getting the first question."""
-    if not st.session_state.interview_initialized:
-        return
-    
-    # Get first question
     decision = get_next_question()
-    
+
     if decision:
-        try:
-            # Parse the decision
-            decision_json = json.loads(decision)
-            
-            if decision_json.get("action") == "stop":
-                st.session_state.interview_complete = True
+        if decision.get("action") == "stop":
+            st.session_state.interview_complete = True
+            st.session_state.messages.append({
+                "role": "agent",
+                "content": "Interview complete! Thank you."
+            })
+        else:
+            question = decision.get("question", "")
+            skill = decision.get("skill", "")
+            if question:
+                st.session_state.asked_skills.append(skill)
                 st.session_state.messages.append({
                     "role": "agent",
-                    "content": "Interview complete! Thank you for answering all the questions."
+                    "content": question,
+                    "skill": skill
                 })
-            else:
-                question = decision_json.get("question", "")
-                skill = decision_json.get("skill", "")
-                if question:
-                    st.session_state.asked_skills.append(skill)
-                    st.session_state.messages.append({
-                        "role": "agent",
-                        "content": question,
-                        "skill": skill
-                    })
-        except json.JSONDecodeError:
-            st.error("Error parsing agent response. Please try again.")
 
 
-# Sidebar for job and resume info
+# SIDEBAR
 with st.sidebar:
     st.title("📋 Interview Info")
-    
+
     if st.session_state.interview_initialized:
         st.subheader("Job Role")
         st.write(f"**Title:** {st.session_state.job_info['Title']}")
         st.write(f"**Code:** {st.session_state.job_info['NCO_Code']}")
-        
+
         with st.expander("Job Description"):
             st.write(st.session_state.job_info['Description'])
-        
+
         st.divider()
-        
+
         st.subheader("Your Skills")
         if st.session_state.resume_skills:
-            skills_text = st.session_state.resume_skills
-            # Display skills as formatted text
-            st.text_area("Extracted Skills:", value=skills_text, height=200, disabled=True)
-        
+            skills = st.session_state.resume_skills
+            if isinstance(skills, list):
+                display_skills = ", ".join(skills)
+            else:
+                display_skills = skills
+            st.text_area("Extracted Skills:", value=display_skills, height=200, disabled=True)
+
         st.divider()
-        
+
         st.subheader("Interview Progress")
+
+        agent = st.session_state.agent
+        skills = st.session_state.resume_skills or []
+        if isinstance(skills, list):
+            total_skills = len(skills)
+        else:
+            total_skills = len(skills.split(","))
+
+        done_skills = len(agent.confidence) if agent else 0
+
+        progress = done_skills / max(total_skills, 1)
+
+        st.progress(progress)
+        st.write(f"{done_skills}/{total_skills} skills evaluated")
+
         if st.session_state.asked_skills:
-            st.write(f"**Skills Evaluated:** {len(st.session_state.asked_skills)}")
             for i, skill in enumerate(st.session_state.asked_skills, 1):
                 st.write(f"{i}. {skill}")
+
     else:
         st.info("Initialize interview to see details.")
 
 
-# Main content area
+# MAIN UI
 st.title("🎤 NCO Interview Agent")
 
 if not st.session_state.interview_initialized:
     st.subheader("Welcome to the Interview System")
+
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.info("""
         This system will:
@@ -183,44 +180,42 @@ if not st.session_state.interview_initialized:
         2. Match you to a relevant job role
         3. Conduct an adaptive interview
         """)
-    
+
     with col2:
         if st.button("Start Interview", type="primary", use_container_width=True):
             with st.spinner("Initializing interview..."):
                 if initialize_interview():
                     st.success("Interview initialized successfully!")
                     st.rerun()
+
 else:
-    # Display chat messages
     st.subheader("Interview Chat")
-    
-    message_container = st.container()
-    
-    with message_container:
-        # Display all messages
-        for msg in st.session_state.messages:
-            if msg["role"] == "agent":
-                with st.chat_message("assistant", avatar="🤖"):
-                    st.write(msg["content"])
-                    if "skill" in msg:
-                        st.caption(f"📌 Evaluating: {msg['skill']}")
-            else:  # user
-                with st.chat_message("user", avatar="👤"):
-                    st.write(msg["content"])
-    
-    # Input form and logic
-    if not st.session_state.interview_complete:
-        # If no messages yet, start the interview
-        if not st.session_state.messages:
-            st.info("Click the button below to start the first question.")
-            if st.button("Get First Question", use_container_width=True):
-                with st.spinner("Generating first question..."):
-                    start_interview()
-                    st.rerun()
+
+    for msg in st.session_state.messages:
+        if msg["role"] == "agent":
+            with st.chat_message("assistant", avatar="🤖"):
+                st.write(msg["content"])
+                if "skill" in msg:
+                    st.caption(f"📌 Evaluating: {msg['skill']}")
         else:
-            # Chat input
+            with st.chat_message("user", avatar="👤"):
+                st.write(msg["content"])
+
+    if not st.session_state.interview_complete:
+
+        # 🔴 EXIT BUTTON
+        if st.button("🛑 End Interview", use_container_width=True):
+            st.session_state.interview_complete = True
+            st.rerun()
+
+        if not st.session_state.messages:
+            if st.button("Get First Question", use_container_width=True):
+                start_interview()
+                st.rerun()
+
+        else:
             col1, col2 = st.columns([0.9, 0.1])
-            
+
             with col1:
                 user_input = st.text_input(
                     "Your answer:",
@@ -228,63 +223,133 @@ else:
                     label_visibility="collapsed",
                     key=f"input_{len(st.session_state.messages)}"
                 )
-            
+
             with col2:
                 submit_button = st.button("Send", use_container_width=True)
-            
+
+            # ⚡ DEMO MODE
+            if st.button("⚡ Auto Answer (Demo Mode)"):
+                user_input = "This is a structured answer demonstrating understanding of the concept."
+                submit_button = True
+
             if submit_button and user_input:
-                # Add user message
+                agent = st.session_state.agent
+
                 st.session_state.messages.append({
                     "role": "user",
                     "content": user_input
                 })
-                
-                # Update agent with the answer
-                if st.session_state.agent:
-                    st.session_state.agent.asked.append(user_input)
-                
-                # Get next question
-                with st.spinner("Agent thinking..."):
-                    decision = st.session_state.agent.decide_next()
-                    
-                    if decision:
-                        try:
-                            decision_json = json.loads(decision)
-                            
-                            if decision_json.get("action") == "stop":
-                                st.session_state.interview_complete = True
-                                st.session_state.messages.append({
-                                    "role": "agent",
-                                    "content": "Thank you for the interview! Your responses have been recorded."
-                                })
-                            else:
-                                question = decision_json.get("question", "")
-                                skill = decision_json.get("skill", "")
-                                if question:
-                                    st.session_state.asked_skills.append(skill)
-                                    st.session_state.messages.append({
-                                        "role": "agent",
-                                        "content": question,
-                                        "skill": skill
-                                    })
-                        except json.JSONDecodeError:
-                            st.error("Error parsing agent response.")
-                
+
+                with st.spinner("Evaluating answer..."):
+
+                    evaluation = agent.evaluate_answer(user_input)
+
+                    st.session_state.messages.append({
+                        "role": "agent",
+                        "content": f"""
+**Score:** {evaluation.get("score", 0):.2f}  
+**Level:** {evaluation.get("level", "")}  
+
+**Feedback:**  
+{evaluation.get("reason", "")}
+"""
+                    })
+
+                    decision = agent.next_step_after_evaluation(evaluation)
+
+                    if decision["action"] == "stop":
+                        st.session_state.interview_complete = True
+                        st.session_state.messages.append({
+                            "role": "agent",
+                            "content": "✅ Interview complete. Great job!"
+                        })
+                    else:
+                        question = decision["question"]
+                        skill = decision.get("skill", "")
+
+                        st.session_state.asked_skills.append(skill)
+
+                        st.session_state.messages.append({
+                            "role": "agent",
+                            "content": question,
+                            "skill": skill
+                        })
+
                 st.rerun()
+
     else:
-        # Interview complete
         st.success("✅ Interview Complete!")
+
+        agent = st.session_state.agent
+        scores = agent.confidence
+
+        if scores:
+            interview_score = sum(scores.values()) / len(scores)
+        else:
+            interview_score = 0
+
+        skills = st.session_state.resume_skills or []
+        if isinstance(skills, list):
+            skill_count = len(skills)
+        else:
+            skill_count = len(skills.split(","))
+
+        resume_score = min(1.0, skill_count / 10)
+        risk_data = agent.compute_risk_score()
+        risk_penalty = risk_data["score"] * 0.1
+
+        final_score = (
+            0.5 * resume_score +
+            0.4 * interview_score -
+            0.1 * risk_penalty
+        )
+
+        st.subheader("📊 Final Results")
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.metric("Resume Score", f"{resume_score:.2f}")
+
+        with col2:
+            st.metric("Interview Score", f"{interview_score:.2f}")
+
+        with col3:
+            st.metric("Final Score", f"{final_score:.2f}")
+
+        st.divider()
+
+        st.subheader("🧠 Skill Evaluation")
+        for skill, score in scores.items():
+            st.write(f"{skill}: {score:.2f}")
+
+        st.subheader("📈 Performance Analysis")
+
+        strong = [k for k, v in scores.items() if v > 0.75]
+        weak = [k for k, v in scores.items() if v < 0.5]
+
+        st.write("**Strengths:**", strong if strong else "None")
+        st.write("**Weak Areas:**", weak if weak else "None")
+
+        st.subheader("⚠️ AI Risk Analysis")
+
+        st.write(f"Risk Level: **{risk_data['risk']}**")
+        st.write(f"Risk Score: {risk_data['score']:.2f}")
+
+        st.subheader("🕵️ Behavior Monitoring (Simulated)")
+        tab_switches = len(st.session_state.messages) // 3
+        st.write(f"Tab switches detected: {tab_switches}")
+
         col1, col2 = st.columns(2)
-        
+
         with col1:
             if st.button("Start New Interview", use_container_width=True):
                 st.session_state.interview_initialized = False
                 st.session_state.messages = []
                 st.rerun()
-        
+
         with col2:
             if st.button("Download Summary", use_container_width=True):
-                # Create summary
                 summary = f"""
 INTERVIEW SUMMARY
 =================
@@ -292,14 +357,14 @@ INTERVIEW SUMMARY
 Job Role: {st.session_state.job_info['Title']}
 Job Code: {st.session_state.job_info['NCO_Code']}
 
+Final Score: {final_score:.2f}
+
 Skills Evaluated:
 {chr(10).join([f"- {skill}" for skill in st.session_state.asked_skills])}
 
-Interview Length: {len(st.session_state.messages)} messages
-
 Interview Transcript:
 {chr(10).join([f"{msg['role'].upper()}: {msg['content']}" for msg in st.session_state.messages])}
-                """
+"""
                 st.download_button(
                     label="Download Summary",
                     data=summary,
