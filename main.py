@@ -7,7 +7,7 @@ from agent import InterviewAgent
 resume_text = open("resumes/resume1.txt").read()
 resume_skills = extract_skills(resume_text)
 
-# Semantic job search (your old project)
+# Semantic job search
 searcher = NCOSemanticSearch()
 job_matches = searcher.search("software engineer", k=1)
 
@@ -22,17 +22,22 @@ agent = InterviewAgent(
     resume_skills=resume_skills
 )
 
-# Interview loop
-while True:
-    decision = agent.decide_next()
-    print("\nAGENT DECISION:\n", decision)
+# Start interview
+decision = agent.decide_next()
 
-    if '"action": "stop"' in decision:
-        print("\nInterview complete.")
-        break
+while decision["action"] != "stop":
+    print("\nQuestion:", decision["question"])
 
-    question = decision.split('"question":')[1].split('"')[1]
-    print("\nQUESTION:", question)
+    answer = input("Your answer: ")
 
-    answer = input("\nYour answer: ")
+    # Evaluate answer
+    evaluation = agent.evaluate_answer(answer)
 
+    print("\nScore:", evaluation["score"])
+    print("Level:", evaluation["level"])
+    print("Feedback:", evaluation["reason"])
+
+    # Decide next step
+    decision = agent.next_step_after_evaluation(evaluation)
+
+print("\nInterview complete.")

@@ -52,3 +52,22 @@ Thumbs.db
 *.log
 *.tmp
 
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Mac
+.DS_Store
+
+# Models / embeddings
+*.npy
+*.index
+*.pt
+
+# Streamlit
+.streamlit/
+
+# Logs
+*.log
+
